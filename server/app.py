@@ -4,6 +4,7 @@ SOC 2 aligned: parameterized ORM queries, input validation, rate limiting,
 audit logging, password complexity enforcement, signed PDF URLs.
 """
 
+from demo_seed import seed_demo_data
 from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
@@ -16,7 +17,9 @@ from flask_limiter.util import get_remote_address
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from datetime import datetime, timedelta
 from functools import wraps
-import os, re, logging
+import os
+import re
+import logging
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
@@ -47,7 +50,7 @@ jwt = JWTManager(app)
 url_serializer = URLSafeTimedSerializer(app.config["JWT_SECRET_KEY"])
 
 limiter = Limiter(get_remote_address, app=app,
-    default_limits=["200 per hour", "50 per minute"], storage_uri="memory://")
+                  default_limits=["200 per hour", "50 per minute"], storage_uri="memory://")
 
 audit_logger = logging.getLogger("chartwatch.audit")
 audit_logger.setLevel(logging.INFO)
@@ -55,14 +58,17 @@ _h = logging.FileHandler("audit.log")
 _h.setFormatter(logging.Formatter("%(asctime)s [AUDIT] %(message)s"))
 audit_logger.addHandler(_h)
 
+
 def audit(action, detail="", user_id=None):
     uid = user_id or "anon"
     ip = request.remote_addr
     audit_logger.info(f"user={uid} ip={ip} action={action} detail={detail}")
 
+
 SAFE_TEXT = re.compile(r"^[\w\s\.\,\-\(\)\+\/\#\:\;\!\?\@\&\'\"]{0,500}$")
-ICD10_RE  = re.compile(r"^[A-Z][0-9]{2}(\.[A-Z0-9]{1,4})?$")
-DATE_RE   = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+ICD10_RE = re.compile(r"^[A-Z][0-9]{2}(\.[A-Z0-9]{1,4})?$")
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
 
 def validate_text(value, field="field", max_len=500, required=False):
     if not value:
@@ -74,11 +80,13 @@ def validate_text(value, field="field", max_len=500, required=False):
         raise ValueError(f"{field} exceeds max length of {max_len}")
     return value
 
+
 def validate_icd10(code):
     code = str(code).strip().upper()
     if not ICD10_RE.match(code):
         raise ValueError(f"Invalid ICD-10 code format: {code}")
     return code
+
 
 def validate_int(value, field="field", min_val=1, max_val=10000):
     try:
@@ -89,6 +97,7 @@ def validate_int(value, field="field", min_val=1, max_val=10000):
     except (TypeError, ValueError):
         raise ValueError(f"{field} must be integer {min_val}-{max_val}")
 
+
 def validate_password(pw):
     if len(pw) < 10:
         raise ValueError("Password must be at least 10 characters")
@@ -98,6 +107,7 @@ def validate_password(pw):
         raise ValueError("Password must contain a number")
     return pw
 
+
 def api_error(msg, code=400):
     return jsonify({"error": msg}), code
 
@@ -106,14 +116,15 @@ def api_error(msg, code=400):
 
 class User(db.Model):
     __tablename__ = "users"
-    id            = db.Column(db.Integer, primary_key=True)
-    username      = db.Column(db.String(80), unique=True, nullable=False, index=True)
-    email         = db.Column(db.String(120), unique=True, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True,
+                         nullable=False, index=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    role          = db.Column(db.String(20), default="coder")
-    is_active     = db.Column(db.Boolean, default=True)
-    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
-    last_login    = db.Column(db.DateTime)
+    role = db.Column(db.String(20), default="coder")
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
 
     def to_dict(self):
         return {"id": self.id, "username": self.username, "email": self.email,
@@ -123,14 +134,14 @@ class User(db.Model):
 
 class Chart(db.Model):
     __tablename__ = "charts"
-    id            = db.Column(db.Integer, primary_key=True)
-    filename      = db.Column(db.String(200), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(200), nullable=False)
     original_name = db.Column(db.String(200), nullable=False)
-    total_pages   = db.Column(db.Integer, default=0)
-    patient_name  = db.Column(db.String(200))
-    mrn           = db.Column(db.String(50))
-    uploaded_by   = db.Column(db.Integer, db.ForeignKey("users.id"))
-    uploaded_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    total_pages = db.Column(db.Integer, default=0)
+    patient_name = db.Column(db.String(200))
+    mrn = db.Column(db.String(50))
+    uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         uploader = db.session.get(User, self.uploaded_by)
@@ -142,11 +153,13 @@ class Chart(db.Model):
 
 class ChartAssignment(db.Model):
     __tablename__ = "chart_assignments"
-    id          = db.Column(db.Integer, primary_key=True)
-    user_id     = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
-    chart_id    = db.Column(db.Integer, db.ForeignKey("charts.id"), nullable=False, index=True)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey(
+        "users.id"), nullable=False, index=True)
+    chart_id = db.Column(db.Integer, db.ForeignKey(
+        "charts.id"), nullable=False, index=True)
     assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
-    status      = db.Column(db.String(20), default="in_progress")
+    status = db.Column(db.String(20), default="in_progress")
     __table_args__ = (db.UniqueConstraint("user_id", "chart_id"),)
 
     def to_dict(self):
@@ -156,12 +169,14 @@ class ChartAssignment(db.Model):
 
 class PageEvent(db.Model):
     __tablename__ = "page_events"
-    id                 = db.Column(db.Integer, primary_key=True)
-    user_id            = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
-    chart_id           = db.Column(db.Integer, db.ForeignKey("charts.id"), nullable=False, index=True)
-    page_number        = db.Column(db.Integer, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey(
+        "users.id"), nullable=False, index=True)
+    chart_id = db.Column(db.Integer, db.ForeignKey(
+        "charts.id"), nullable=False, index=True)
+    page_number = db.Column(db.Integer, nullable=False)
     time_spent_seconds = db.Column(db.Float, nullable=False)
-    recorded_at        = db.Column(db.DateTime, default=datetime.utcnow)
+    recorded_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         return {"id": self.id, "user_id": self.user_id, "chart_id": self.chart_id,
@@ -171,16 +186,18 @@ class PageEvent(db.Model):
 
 class ICD10Code(db.Model):
     __tablename__ = "icd10_codes"
-    id              = db.Column(db.Integer, primary_key=True)
-    user_id         = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
-    chart_id        = db.Column(db.Integer, db.ForeignKey("charts.id"), nullable=False, index=True)
-    code            = db.Column(db.String(20), nullable=False)
-    description     = db.Column(db.String(500))
-    page_number     = db.Column(db.Integer)
-    provider        = db.Column(db.String(200))
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey(
+        "users.id"), nullable=False, index=True)
+    chart_id = db.Column(db.Integer, db.ForeignKey(
+        "charts.id"), nullable=False, index=True)
+    code = db.Column(db.String(20), nullable=False)
+    description = db.Column(db.String(500))
+    page_number = db.Column(db.Integer)
+    provider = db.Column(db.String(200))
     date_of_service = db.Column(db.String(20))
-    comment         = db.Column(db.Text)
-    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+    comment = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         user = db.session.get(User, self.user_id)
@@ -193,10 +210,10 @@ class ICD10Code(db.Model):
 
 class AuditLog(db.Model):
     __tablename__ = "audit_logs"
-    id         = db.Column(db.Integer, primary_key=True)
-    user_id    = db.Column(db.Integer, db.ForeignKey("users.id"))
-    action     = db.Column(db.String(100), nullable=False)
-    target     = db.Column(db.String(200))
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    action = db.Column(db.String(100), nullable=False)
+    target = db.Column(db.String(200))
     ip_address = db.Column(db.String(45))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -230,11 +247,16 @@ def admin_required(fn):
 
 
 def speed_status(ppm):
-    if ppm <= 0:   return "no_data"
-    if ppm < 2.0:  return "green"
-    if ppm < 3.0:  return "yellow"
-    if ppm < 5.0:  return "red"
+    if ppm <= 0:
+        return "no_data"
+    if ppm < 2.0:
+        return "green"
+    if ppm < 3.0:
+        return "yellow"
+    if ppm < 5.0:
+        return "red"
     return "qa_required"
+
 
 def speed_label(status):
     return {"no_data": "No Data", "green": "Thorough (< 2.0 ppm)",
@@ -271,10 +293,11 @@ def login():
 def register():
     data = request.get_json(silent=True) or {}
     try:
-        username = validate_text(data.get("username"), "username", 80, required=True)
-        email    = validate_text(data.get("email", ""), "email", 120)
+        username = validate_text(data.get("username"),
+                                 "username", 80, required=True)
+        email = validate_text(data.get("email", ""), "email", 120)
         password = validate_password(str(data.get("password", "")))
-        role     = data.get("role", "coder")
+        role = data.get("role", "coder")
         if role not in ("coder", "admin"):
             role = "coder"
     except ValueError as e:
@@ -282,7 +305,8 @@ def register():
     if User.query.filter_by(username=username).first():
         return api_error("Username already taken", 409)
     pw_hash = bcrypt.generate_password_hash(password).decode("utf-8")
-    user = User(username=username, email=email, password_hash=pw_hash, role=role)
+    user = User(username=username, email=email,
+                password_hash=pw_hash, role=role)
     db.session.add(user)
     db.session.commit()
     token = create_access_token(identity=str(user.id))
@@ -309,8 +333,10 @@ def get_charts():
     if user.role == "admin":
         charts = Chart.query.order_by(Chart.uploaded_at.desc()).all()
     else:
-        assigned_ids = db.session.query(ChartAssignment.chart_id).filter_by(user_id=user.id).subquery()
-        charts = Chart.query.filter(Chart.id.in_(assigned_ids)).order_by(Chart.uploaded_at.desc()).all()
+        assigned_ids = db.session.query(
+            ChartAssignment.chart_id).filter_by(user_id=user.id).subquery()
+        charts = Chart.query.filter(Chart.id.in_(assigned_ids)).order_by(
+            Chart.uploaded_at.desc()).all()
     return jsonify([c.to_dict() for c in charts])
 
 
@@ -336,7 +362,8 @@ def upload_chart():
     except Exception:
         pass
     try:
-        patient_name = validate_text(request.form.get("patient_name", ""), "patient_name", 200)
+        patient_name = validate_text(request.form.get(
+            "patient_name", ""), "patient_name", 200)
         mrn = validate_text(request.form.get("mrn", ""), "mrn", 50)
     except ValueError as e:
         os.remove(path)
@@ -354,12 +381,13 @@ def upload_chart():
 @jwt_required()
 def sign_chart_url(chart_id):
     user_id = int(get_jwt_identity())
-    user  = db.session.get(User, user_id)
+    user = db.session.get(User, user_id)
     chart = db.session.get(Chart, chart_id)
     if not chart:
         return api_error("Chart not found", 404)
     if user.role != "admin":
-        has_access = ChartAssignment.query.filter_by(user_id=user_id, chart_id=chart_id).first()
+        has_access = ChartAssignment.query.filter_by(
+            user_id=user_id, chart_id=chart_id).first()
         if not has_access:
             return api_error("Access denied", 403)
     token = url_serializer.dumps({"chart_id": chart_id, "user_id": user_id})
@@ -428,8 +456,9 @@ def record_page_event():
     data = request.get_json(silent=True) or {}
     user_id = int(get_jwt_identity())
     try:
-        chart_id   = validate_int(data.get("chart_id"), "chart_id")
-        page_num   = validate_int(data.get("page_number"), "page_number", 1, 10000)
+        chart_id = validate_int(data.get("chart_id"), "chart_id")
+        page_num = validate_int(data.get("page_number"),
+                                "page_number", 1, 10000)
         time_spent = float(data.get("time_spent_seconds", 0))
         if time_spent < 0 or time_spent > 3600:
             raise ValueError("Invalid time_spent_seconds")
@@ -453,14 +482,15 @@ def add_code():
     user_id = int(get_jwt_identity())
     try:
         chart_id = validate_int(data.get("chart_id"), "chart_id")
-        code     = validate_icd10(data.get("code", ""))
-        desc     = validate_text(data.get("description", ""), "description", 500)
-        page_num = validate_int(data.get("page_number", 1), "page_number", 1, 10000)
+        code = validate_icd10(data.get("code", ""))
+        desc = validate_text(data.get("description", ""), "description", 500)
+        page_num = validate_int(
+            data.get("page_number", 1), "page_number", 1, 10000)
         provider = validate_text(data.get("provider", ""), "provider", 200)
-        dos      = str(data.get("date_of_service", ""))[:20]
+        dos = str(data.get("date_of_service", ""))[:20]
         if dos and not DATE_RE.match(dos):
             return api_error("date_of_service must be YYYY-MM-DD")
-        comment  = validate_text(data.get("comment", ""), "comment", 2000)
+        comment = validate_text(data.get("comment", ""), "comment", 2000)
     except ValueError as e:
         return api_error(str(e))
     if not ChartAssignment.query.filter_by(user_id=user_id, chart_id=chart_id).first():
@@ -482,7 +512,8 @@ def get_codes(chart_id):
     if user.role == "admin":
         codes = ICD10Code.query.filter_by(chart_id=chart_id).all()
     else:
-        codes = ICD10Code.query.filter_by(chart_id=chart_id, user_id=user_id).all()
+        codes = ICD10Code.query.filter_by(
+            chart_id=chart_id, user_id=user_id).all()
     return jsonify([c.to_dict() for c in codes])
 
 
@@ -505,14 +536,16 @@ def delete_code(code_id):
 # ── Analytics — Coder-centric (ppm-based) ─────────────────────────────────────
 
 def compute_coder_stats(user_id):
+    from fatigue_metrics import analyze_fatigue
     assignments = ChartAssignment.query.filter_by(user_id=user_id).all()
     chart_ids = [a.chart_id for a in assignments]
     if not chart_ids:
         return []
     results = []
     for chart_id in chart_ids:
-        chart  = db.session.get(Chart, chart_id)
-        events = PageEvent.query.filter_by(user_id=user_id, chart_id=chart_id).all()
+        chart = db.session.get(Chart, chart_id)
+        events = PageEvent.query.filter_by(
+            user_id=user_id, chart_id=chart_id).all()
         if not events:
             results.append({
                 "chart_id": chart_id,
@@ -529,10 +562,10 @@ def compute_coder_stats(user_id):
             continue
 
         pages_reviewed = len(set(e.page_number for e in events))
-        total_seconds  = sum(e.time_spent_seconds for e in events)
-        total_minutes  = total_seconds / 60
+        total_seconds = sum(e.time_spent_seconds for e in events)
+        total_minutes = total_seconds / 60
         avg_ppm = (pages_reviewed / total_minutes) if total_minutes > 0 else 0
-        status  = speed_status(avg_ppm)
+        status = speed_status(avg_ppm)
 
         page_map = {}
         for e in events:
@@ -550,13 +583,14 @@ def compute_coder_stats(user_id):
             max_page = max(p["page"] for p in page_breakdown)
             for start in range(1, max_page + 1, 10):
                 end = start + 9
-                bucket = [p for p in page_breakdown if start <= p["page"] <= end]
+                bucket = [p for p in page_breakdown if start <=
+                          p["page"] <= end]
                 if bucket:
                     avg_s = sum(p["avg_seconds"] for p in bucket) / len(bucket)
                     b_ppm = round(60/avg_s, 2) if avg_s > 0 else 0
                     trend.append({"page_range": f"{start}-{end}", "start_page": start,
                                   "avg_ppm": b_ppm, "status": speed_status(b_ppm)})
-
+        fatigue = analyze_fatigue(page_breakdown, trend)
         results.append({
             "chart_id": chart_id,
             "chart_name": chart.original_name if chart else "—",
@@ -570,6 +604,7 @@ def compute_coder_stats(user_id):
             "speed_label": speed_label(status),
             "page_breakdown": page_breakdown,
             "trend": trend,
+            **fatigue,
             "assignment_status": next((a.status for a in assignments if a.chart_id == chart_id), "in_progress")
         })
     return results
@@ -579,7 +614,7 @@ def compute_coder_stats(user_id):
 @jwt_required()
 def coder_analytics(coder_id):
     caller_id = int(get_jwt_identity())
-    caller    = db.session.get(User, caller_id)
+    caller = db.session.get(User, caller_id)
     if caller.role != "admin" and caller_id != coder_id:
         return api_error("Forbidden", 403)
     coder = db.session.get(User, coder_id)
@@ -617,7 +652,7 @@ def all_coders_analytics():
             "overall_avg_ppm": round(overall_ppm, 2),
             "overall_status": speed_status(overall_ppm),
             "overall_label": speed_label(speed_status(overall_ppm)),
-            "flagged_charts": sum(1 for s in stats if s["speed_status"] in ("red", "qa_required")),
+            "flagged_charts": sum(1 for s in stats if s["speed_status"] in ("red", "qa_required") or s.get("fatigue_flag", False)),
             "qa_required": any(s["speed_status"] == "qa_required" for s in stats),
         })
     return jsonify(result)
@@ -630,15 +665,16 @@ def chart_analytics(chart_id):
     if not chart:
         return api_error("Chart not found", 404)
     assignments = ChartAssignment.query.filter_by(chart_id=chart_id).all()
-    coder_data  = []
+    coder_data = []
     for a in assignments:
-        coder  = db.session.get(User, a.user_id)
-        events = PageEvent.query.filter_by(user_id=a.user_id, chart_id=chart_id).all()
+        coder = db.session.get(User, a.user_id)
+        events = PageEvent.query.filter_by(
+            user_id=a.user_id, chart_id=chart_id).all()
         if not events:
             continue
-        pages     = len(set(e.page_number for e in events))
+        pages = len(set(e.page_number for e in events))
         total_min = sum(e.time_spent_seconds for e in events) / 60
-        ppm       = pages / total_min if total_min > 0 else 0
+        ppm = pages / total_min if total_min > 0 else 0
         coder_data.append({
             "coder": coder.to_dict() if coder else {},
             "pages_reviewed": pages, "total_time_minutes": round(total_min, 2),
@@ -672,7 +708,8 @@ def seed_data():
 
     print("  Seeding users...")
     admin = User(username="admin", email="admin@chartwatch.dev",
-                 password_hash=bcrypt.generate_password_hash("Admin123!").decode(),
+                 password_hash=bcrypt.generate_password_hash(
+                     "Admin123!").decode(),
                  role="admin")
     db.session.add(admin)
     db.session.flush()
@@ -689,7 +726,8 @@ def seed_data():
     coders = []
     for uname, email in coder_configs:
         u = User(username=uname, email=email,
-                 password_hash=bcrypt.generate_password_hash("Coder123!").decode(),
+                 password_hash=bcrypt.generate_password_hash(
+                     "Coder123!").decode(),
                  role="coder")
         db.session.add(u)
         coders.append(u)
@@ -762,38 +800,49 @@ def seed_data():
         for chart in charts:
             if chart.id not in coder_chart_map[coder.id]:
                 continue
-            total_pages    = chart.total_pages
-            n_to_review    = int(total_pages * random.uniform(0.72, 0.95))
+            total_pages = chart.total_pages
+            n_to_review = int(total_pages * random.uniform(0.72, 0.95))
             reviewed_pages = sorted(random.sample(range(1, total_pages + 1),
                                                   min(n_to_review, total_pages)))
-            session_start  = now - timedelta(hours=random.uniform(2, 96))
-            elapsed        = 0
+            session_start = now - timedelta(hours=random.uniform(2, 96))
+            elapsed = 0
             for page in reviewed_pages:
-                progress   = page / total_pages
-                curr_ppm   = base_ppm + fatigue_rate * progress
-                noise      = random.gauss(0, noise_sd * curr_ppm)
+                progress = page / total_pages
+                curr_ppm = base_ppm + fatigue_rate * progress
+                noise = random.gauss(0, noise_sd * curr_ppm)
                 actual_ppm = max(0.5, curr_ppm + noise)
-                seconds    = 60 / actual_ppm
-                elapsed   += seconds
+                seconds = 60 / actual_ppm
+                elapsed += seconds
                 e = PageEvent(user_id=coder.id, chart_id=chart.id,
-                              page_number=page, time_spent_seconds=round(seconds, 1),
+                              page_number=page, time_spent_seconds=round(
+                                  seconds, 1),
                               recorded_at=session_start + timedelta(seconds=elapsed))
                 db.session.add(e)
 
     print("  Seeding sample ICD-10 codes...")
     hargrove_codes = [
-        ("I50.32", "Chronic diastolic heart failure", 12, "Dr. Priya Nair", "2024-09-12", "Confirmed BNP 412"),
-        ("E11.65",  "Type 2 DM with hyperglycemia",   8,  "Dr. Priya Nair", "2024-09-12", "HbA1c 8.4%"),
-        ("N18.3",   "CKD stage 3a",                   15, "Dr. Priya Nair", "2024-09-12", "eGFR 41"),
-        ("M81.0",   "Age-related osteoporosis",        34, "Dr. Priya Nair", "2024-09-12", "DEXA ordered"),
-        ("F32.1",   "Major depressive disorder",       41, "Dr. Priya Nair", "2024-09-12", "PHQ-9 score 14"),
+        ("I50.32", "Chronic diastolic heart failure", 12,
+         "Dr. Priya Nair", "2024-09-12", "Confirmed BNP 412"),
+        ("E11.65",  "Type 2 DM with hyperglycemia",   8,
+         "Dr. Priya Nair", "2024-09-12", "HbA1c 8.4%"),
+        ("N18.3",   "CKD stage 3a",                   15,
+         "Dr. Priya Nair", "2024-09-12", "eGFR 41"),
+        ("M81.0",   "Age-related osteoporosis",        34,
+         "Dr. Priya Nair", "2024-09-12", "DEXA ordered"),
+        ("F32.1",   "Major depressive disorder",       41,
+         "Dr. Priya Nair", "2024-09-12", "PHQ-9 score 14"),
     ]
     washington_codes = [
-        ("C61",     "Malignant neoplasm of prostate",  7,  "Dr. James Okafor", "2024-10-03", "Active ADT, rising PSA"),
-        ("J44.1",   "COPD with acute exacerbation",    22, "Dr. James Okafor", "2024-10-03", "SpO2 91%, GOLD IV"),
-        ("N18.4",   "CKD stage 4",                     31, "Dr. James Okafor", "2024-10-03", "eGFR 28, declining"),
-        ("E11.649", "T2DM with hypoglycemia",           18, "Dr. James Okafor", "2024-10-03", "HbA1c 9.8%"),
-        ("I25.10",  "CAD of native coronary artery",   45, "Dr. James Okafor", "2024-10-03", "On dual antiplatelet"),
+        ("C61",     "Malignant neoplasm of prostate",  7,
+         "Dr. James Okafor", "2024-10-03", "Active ADT, rising PSA"),
+        ("J44.1",   "COPD with acute exacerbation",    22,
+         "Dr. James Okafor", "2024-10-03", "SpO2 91%, GOLD IV"),
+        ("N18.4",   "CKD stage 4",                     31,
+         "Dr. James Okafor", "2024-10-03", "eGFR 28, declining"),
+        ("E11.649", "T2DM with hypoglycemia",           18,
+         "Dr. James Okafor", "2024-10-03", "HbA1c 9.8%"),
+        ("I25.10",  "CAD of native coronary artery",   45,
+         "Dr. James Okafor", "2024-10-03", "On dual antiplatelet"),
     ]
     for coder in coders[:3]:
         for chart in charts:
@@ -815,5 +864,8 @@ def seed_data():
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-        seed_data()
+        seed_demo_data(
+            app, db, bcrypt,
+            User, Chart, ChartAssignment, PageEvent, ICD10Code
+        )
     app.run(debug=False, port=5000)
