@@ -1,6 +1,8 @@
 # ChartWatch demo walkthrough
 
-ChartWatch is an interactive, static demo of a medical coding review dashboard. All accounts, charts, and starting review times are synthetic. No backend or real sign-in is needed.
+ChartWatch is an interactive, static demo of my [ChartWatch repo](https://github.com/caitjordan17/chart-watch). All accounts, charts, and starting review times are synthetic. No backend or real sign-in is needed.
+
+
 
 ## 1. Explore as Admin
 
