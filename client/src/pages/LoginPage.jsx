@@ -1,3 +1,4 @@
+import BrandIcon from '../components/BrandIcon';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
@@ -8,23 +9,30 @@ export default function LoginPage({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const signIn = async (loginUsername, loginPassword) => {
     setError('');
     setLoading(true);
     try {
-      const user = await login(username, password);
+      const user = await login(loginUsername, loginPassword);
       onLogin(user);
-    } catch {
-      setError('Invalid username or password');
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const fillDemo = (role) => {
-    if (role === 'admin') { setUsername('admin'); setPassword('Admin123!'); }
-    else { setUsername('jsmith'); setPassword('Coder123!'); }
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    signIn(username, password);
+  };
+
+  const loginDemo = (role) => {
+    const demoUsername = role === 'admin' ? 'admin' : 'jsmith';
+    const demoPassword = role === 'admin' ? 'Admin123!' : 'Coder123!';
+    setUsername(demoUsername);
+    setPassword(demoPassword);
+    signIn(demoUsername, demoPassword);
   };
 
   return (
@@ -32,14 +40,7 @@ export default function LoginPage({ onLogin }) {
       <div className="login-card">
         <div className="login-brand">
           <div className="brand-icon">
-            <svg viewBox="0 0 40 40" fill="none">
-              <rect x="4" y="4" width="32" height="36" rx="3" fill="#1a1a2e" stroke="#4f8ef7" strokeWidth="2"/>
-              <rect x="9" y="12" width="22" height="2" rx="1" fill="#4f8ef7" opacity="0.6"/>
-              <rect x="9" y="17" width="22" height="2" rx="1" fill="#4f8ef7" opacity="0.6"/>
-              <rect x="9" y="22" width="14" height="2" rx="1" fill="#4f8ef7" opacity="0.6"/>
-              <circle cx="30" cy="30" r="8" fill="#1a1a2e" stroke="#f7c04f" strokeWidth="2"/>
-              <path d="M27 30l2 2 4-4" stroke="#f7c04f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <BrandIcon size={64} />
           </div>
           <h1>ChartWatch</h1>
           <p>Medical Coding Intelligence Platform</p>
@@ -47,8 +48,9 @@ export default function LoginPage({ onLogin }) {
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="field">
-            <label>Username</label>
+            <label htmlFor="username">Username</label>
             <input
+              id="username" autoComplete="username" required
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
@@ -57,28 +59,29 @@ export default function LoginPage({ onLogin }) {
             />
           </div>
           <div className="field">
-            <label>Password</label>
+            <label htmlFor="password">Password</label>
             <input
+              id="password" autoComplete="current-password" required
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="Enter your password"
             />
           </div>
-          {error && <div className="login-error">{error}</div>}
+          {error && <div className="login-error" role="alert">{error}</div>}
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
         <div className="demo-logins">
-          <p>Demo accounts</p>
+          <p>Demo accounts · no real sign-in required</p>
           <div className="demo-buttons">
-            <button onClick={() => fillDemo('admin')} className="demo-btn">
+            <button type="button" onClick={() => loginDemo('admin')} className="demo-btn" disabled={loading} aria-label="Sign in as demo Admin">
               <span className="role-badge admin">Admin</span>
               admin / Admin123!
             </button>
-            <button onClick={() => fillDemo('coder')} className="demo-btn">
+            <button type="button" onClick={() => loginDemo('coder')} className="demo-btn" disabled={loading} aria-label="Sign in as demo Coder">
               <span className="role-badge coder">Coder</span>
               jsmith / Coder123!
             </button>
@@ -87,17 +90,16 @@ export default function LoginPage({ onLogin }) {
       </div>
 
       <div className="login-bg">
-        <div className="bg-stat">
-          <span className="stat-num">280</span>
-          <span className="stat-label">pages tracked</span>
-        </div>
-        <div className="bg-stat">
-          <span className="stat-num">↓38%</span>
-          <span className="stat-label">speed drop detected</span>
-        </div>
-        <div className="bg-stat">
-          <span className="stat-num">3</span>
-          <span className="stat-label">active coders</span>
+        <div className="demo-story">
+          <span className="role-badge admin">Synthetic data demo</span>
+          <h2>Focus quality review where it may help most.</h2>
+          <p>ChartWatch helps coding team leads investigate changes in review pace across long charts.</p>
+          <ol>
+            <li><strong>Explore as Admin:</strong> open Analytics and filter flagged coders.</li>
+            <li><strong>Investigate:</strong> expand a coder and chart to inspect page-level pace changes.</li>
+            <li><strong>Try as Coder:</strong> open an assigned chart and scroll to record review time.</li>
+          </ol>
+          <p>Timing is a signal for a conversation and targeted QA. This demo does not measure coding accuracy or prove fatigue.</p>
         </div>
       </div>
     </div>

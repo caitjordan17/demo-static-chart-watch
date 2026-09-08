@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { resetDemo } from './lib/demoStore';
+import { flushSync } from 'react-dom';
+import BrandIcon from './components/BrandIcon';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import ChartsPage from './components/ChartsPage';
@@ -10,6 +13,8 @@ function AppInner() {
   const { user, logout } = useAuth();
   const [tab, setTab] = useState('charts');
   const [selectedChart, setSelectedChart] = useState(null);
+
+  useEffect(() => { setTab('charts'); setSelectedChart(null); }, [user?.id]);
 
   if (!user) return <LoginPage onLogin={() => { }} />;
 
@@ -23,14 +28,7 @@ function AppInner() {
     <div className="app">
       <nav className="navbar">
         <div className="nav-brand">
-          <svg viewBox="0 0 32 32" fill="none" width="28">
-            <rect x="3" y="3" width="26" height="29" rx="2.5" fill="#0d0f1e" stroke="#4f8ef7" strokeWidth="1.5" />
-            <rect x="7" y="10" width="18" height="1.5" rx="0.75" fill="#4f8ef7" opacity="0.6" />
-            <rect x="7" y="14" width="18" height="1.5" rx="0.75" fill="#4f8ef7" opacity="0.6" />
-            <rect x="7" y="18" width="11" height="1.5" rx="0.75" fill="#4f8ef7" opacity="0.6" />
-            <circle cx="24" cy="24" r="6" fill="#0d0f1e" stroke="#f7c04f" strokeWidth="1.5" />
-            <path d="M21.5 24l2 2 3.5-3.5" stroke="#f7c04f" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <BrandIcon />
           <span>ChartWatch</span>
         </div>
 
@@ -56,10 +54,16 @@ function AppInner() {
               <span className={`user-role ${user.role}`}>{user.role}</span>
             </div>
           </div>
+          <button className="logout-btn" onClick={() => {
+            // Stop the workspace timer before clearing its last saved interval.
+            flushSync(() => logout());
+            resetDemo();
+          }}>Reset demo</button>
           <button onClick={logout} className="logout-btn">Sign out</button>
         </div>
       </nav>
 
+      <div className="demo-notice">Static demo · Changes stay in this browser · Pace signals help prioritize review; they do not establish coding accuracy.</div>
       <main className="main-content">
         {tab === 'charts' && (
           <ChartsPage
@@ -67,7 +71,7 @@ function AppInner() {
             onSelectChart={(c) => { setSelectedChart(c); setTab('code'); }}
           />
         )}
-        {tab === 'code' && <CoderWorkspace chart={selectedChart} />}
+        {tab === 'code' && <CoderWorkspace key={`${user.id}-${selectedChart?.id}`} chart={selectedChart} />}
         {tab === 'analytics' && user.role === 'admin' && <AdminDashboard />}
       </main>
     </div>

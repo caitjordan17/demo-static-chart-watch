@@ -11,3 +11,7 @@ server/audit.log
 node_modules/
 dist/
 .DS_Store
+
+# Browser test artifacts
+client/test-results/
+client/playwright-report/

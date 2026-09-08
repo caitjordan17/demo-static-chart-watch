@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "filename": "demo_wellness_81pg.pdf",
+    "original_name": "Demo Wellness Chart \u2014 Synthetic",
+    "patient_name": "Demo Patient A",
+    "mrn": "DEMO-001",
+    "total_pages": 81,
+    "uploaded_by": "admin",
+    "uploaded_at": "2026-01-15T12:00:00Z"
+  },
+  {
+    "id": 2,
+    "filename": "demo_complex_310pg.pdf",
+    "original_name": "Demo Complex Care Chart \u2014 Synthetic",
+    "patient_name": "Demo Patient B",
+    "mrn": "DEMO-002",
+    "total_pages": 310,
+    "uploaded_by": "admin",
+    "uploaded_at": "2026-01-15T12:00:00Z"
+  },
+  {
+    "id": 3,
+    "filename": "demo_followup_145pg.pdf",
+    "original_name": "Demo Follow-up Chart \u2014 Synthetic",
+    "patient_name": "Demo Patient C",
+    "mrn": "DEMO-003",
+    "total_pages": 145,
+    "uploaded_by": "admin",
+    "uploaded_at": "2026-01-15T12:00:00Z"
+  }
+]
