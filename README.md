@@ -37,3 +37,4 @@ Sign out and enter as Coder to review it. The file is read locally and is never 
 Click **Reset demo** in the navigation to clear your changes, remove imported PDFs, and return to the login screen with the original sample data.
 
 You can also use the sign-in form: `admin` / `Admin123!` or `jsmith` / `Coder123!`. These are public demo view selectors, not secure accounts.
+ 
